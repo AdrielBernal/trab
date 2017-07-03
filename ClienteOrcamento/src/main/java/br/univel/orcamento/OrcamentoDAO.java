@@ -1,4 +1,4 @@
-package br.univel.produto;
+package br.univel.orcamento;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,53 +8,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 import br.univel.db.ConexaoDB;
+import br.univel.produto.Produto;
 
-public class ProdutoDAO {
+public class OrcamentoDAO {
+	private static final String SQL_BUSCA_TODOS = "SELECT * FROM ORCAMENTO";
 
-	private static final String SQL_BUSCA_TODOS = "SELECT * FROM PRODUTO";
+	private static final String SQL_INSERT_PRODUTO = "INSERT INTO PRODUTO_ORCAMENTO(id_orcamento,id_produto) VALUES(?,?)";
 
-	private static final String SQL_INSERT = "INSERT INTO PRODUTO(id,descricao, valor_dolar) VALUES(?,?,?)";
+	private static final String SQL_INSERT_ORCAMENTO = "INSERT INTO ORCAMENTO(descricao, id_cliente, valor_dolar) VALUES(?,?,?)";
 
-	private static final String SQL_DELETE = "DELETE FROM PRODUTO WHERE id=?";
+	private static final String SQL_DELETE = "DELETE FROM ORCAMENTO WHERE id=? CASCADE";
 
 	private static final String SQL_PESQUISA = " SELECT * FROM PRODUTO WHERE descricao ILIKE ?";
 
-	public ProdutoDAO() {
-		LeitorProdutoURL lp = new LeitorProdutoURL();
-		List<Produto> listaB = getTodos();
-		if (!(listaB.size() == 0)) {
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					List<Produto> listaUrl;
-					try {
-						listaUrl = lp.lerProdutos();
-						for (Produto produto : listaUrl) {
-							for (Produto prod : listaB) {
-								if (produto.getId() == prod.getId()) {
-									if (!produto.getDescricao().equals(prod.getDescricao())
-											|| produto.getValorDolar() != prod.getValorDolar()) {
-										exclui(prod.getId().intValue());
-										insere(produto);
-									}
-								}
-							}
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			}).start();
-
-		} else
-			insereTodos(lp);
-	}
-
-	private void insereTodos(LeitorProdutoURL lp) {
+	private void insereProdutos(List<Produto> lista) {
 		try {
-			List<Produto> lista = lp.lerProdutos();
 			for (Produto produto : lista) {
-				insere(produto);
+				insereProduto(produto);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -62,18 +32,18 @@ public class ProdutoDAO {
 
 	}
 
-	public List<Produto> getTodos() {
+	public List<Orcamento> getTodos() {
 
 		Connection con = ConexaoDB.getInstance().getConnection();
 
-		List<Produto> lista = new ArrayList<>();
+		List<Orcamento> lista = new ArrayList<>();
 		try (PreparedStatement ps = con.prepareStatement(SQL_BUSCA_TODOS); ResultSet rs = ps.executeQuery()) {
 
 			while (rs.next()) {
-				Produto c = new Produto();
+				Orcamento c = new Orcamento();
 				c.setId(rs.getLong(1));
 				c.setDescricao(rs.getString(2));
-				c.setValorDolar(rs.getBigDecimal(3));
+				c.setValorTotalDolar(rs.getBigDecimal(3));
 				lista.add(c);
 			}
 
@@ -84,9 +54,9 @@ public class ProdutoDAO {
 		return lista;
 	}
 
-	public void insere(Produto p) {
+	public void insereProduto(Produto p) {
 		Connection con = ConexaoDB.getInstance().getConnection();
-		try (PreparedStatement ps = con.prepareStatement(SQL_INSERT);) {
+		try (PreparedStatement ps = con.prepareStatement(SQL_INSERT_PRODUTO);) {
 			ps.setLong(1, p.getId());
 			ps.setString(2, p.getDescricao());
 			ps.setBigDecimal(3, p.getValorDolar());
@@ -132,4 +102,16 @@ public class ProdutoDAO {
 		return lista;
 	}
 
+	public void insere(Orcamento c) {
+		Connection con = ConexaoDB.getInstance().getConnection();
+		try (PreparedStatement ps = con.prepareStatement(SQL_INSERT_ORCAMENTO);) {
+			ps.setLong(1, c.getId());
+			ps.setString(2, c.getDescricao());
+			ps.setBigDecimal(3, c.getValorTotalDolar());
+			ps.executeUpdate();
+			insereProdutos(c.getProdutos());
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
 }

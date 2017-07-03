@@ -19,6 +19,8 @@ public class ClienteDAO {
 
 	private static final String SQL_PESQUISA = " SELECT * FROM CLIENTE WHERE nome ILIKE ?";
 
+	private static final String SQL_ATUALIZA = " UPDATE CLIENTE SET nome= ?, cpf= ?,telefone=? WHERE id=?";
+
 	public List<Cliente> getTodos() {
 
 		Connection con = ConexaoDB.getInstance().getConnection();
@@ -55,7 +57,17 @@ public class ClienteDAO {
 
 	}
 
-	public void atualiza(int id, Cliente c) {
+	public void atualiza(Cliente c) {
+		Connection con = ConexaoDB.getInstance().getConnection();
+		try (PreparedStatement ps = con.prepareStatement(SQL_ATUALIZA);) {
+			ps.setString(1, c.getNome());
+			ps.setString(2, c.getCpf());
+			ps.setString(3, c.getTelefone());
+			ps.setInt(4, c.getId());
+			ps.executeUpdate();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 
 	}
 
@@ -76,7 +88,7 @@ public class ClienteDAO {
 		List<Cliente> lista = new ArrayList<>();
 		try (PreparedStatement ps = con.prepareStatement(SQL_PESQUISA)) {
 
-			ps.setString(1, "%"+filtro+"%");
+			ps.setString(1, "%" + filtro + "%");
 			ResultSet rs = ps.executeQuery();
 
 			while (rs.next()) {
